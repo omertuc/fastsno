@@ -6,6 +6,8 @@ SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 
 mkdir -p "$SCRIPT_DIR/timelines"
 
+echo '[]' > "$SCRIPT_DIR"/timeline.json
+
 now=$(jq -n 'now | todateiso8601' -r)
 i=0
 for jq_script_file in "$@"; do
