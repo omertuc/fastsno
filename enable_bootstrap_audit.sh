@@ -5,7 +5,7 @@ set -euxo pipefail
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 
 function snossh() {
-	ssh -o IdentityFile="${SCRIPT_DIR}"/bootstrap-in-place-poc/ssh-key/key -o LogLevel=ERROR -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no core@192.168.126.10 $@
+	ssh -o IdentityFile="${SCRIPT_DIR}"/../bootstrap-in-place-poc/ssh-key/key -o LogLevel=ERROR -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no core@192.168.126.10 $@
 }
 
 while ! snossh ls /etc/kubernetes/bootstrap-configs/kube-apiserver-config.yaml >/dev/null; do
