@@ -1,0 +1,27 @@
+<head>
+    <script src="https://unpkg.com/timelines-chart"></script>
+</head>
+<body>
+    <script>
+    fetch('./timeline.json')
+    .then(response => response.json())
+    .then(data => {
+        TimelinesChart()(document.getElementById('chart'))
+            .maxHeight(50000)
+            .maxLineHeight(20)
+            .rightMargin(700)
+            .leftMargin(500)
+            .topMargin(200)
+            .zQualitative(true).data(data)
+            .segmentTooltipContent(d => `${d.timeRange[0]} - ${d.timeRange[1]}</br></br>${d.label}</br>${d.labelVal}</br></br>${d.data.description}`)
+            .onSegmentClick(d => {
+                document.getElementById('description').innerHTML = `Segment Clicked: ${d.data.description}`;
+            })
+            ;
+    })
+
+    </script>
+
+    <div id="chart"></div>
+    <p id="description"></p>
+</body>
