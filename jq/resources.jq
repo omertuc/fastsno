@@ -6,7 +6,7 @@
             $root[]
             | select(
                 .verb == "create"
-                and (.objectRef.resource | test("(pods|deployments|secrets|configmaps|namespaces)"))
+                and (.objectRef.resource | test("(pods|deployments|secrets|replicasets|configmaps|namespaces)"))
                 and .responseStatus.code == 201
                 and .objectRef.name != null
             ) 
