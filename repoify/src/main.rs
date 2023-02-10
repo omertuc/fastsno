@@ -62,6 +62,10 @@ fn main() {
             continue;
         }
 
+        if x["verb"].as_str().unwrap_or("") != "update" {
+            continue;
+        }
+
         let target_dir = repo_dir
             .join(
                 x["objectRef"]["namespace"]
@@ -73,16 +77,24 @@ fn main() {
         fs::create_dir_all(&target_dir).unwrap();
 
         let name = x["objectRef"]["name"].as_str().unwrap();
-        let target_name = if x["objectRef"]["subresource"].as_str().unwrap_or("") == "status" {
+        let is_status = x["objectRef"]["subresource"].as_str().unwrap_or("") == "status";
+
+        let target_name = if is_status {
             target_dir.join(format!("{}_status.yaml", name))
         } else {
             target_dir.join(format!("{}.yaml", name))
         };
 
-        let request_object = x["requestObject"].clone();
+        let mut request_object = x["requestObject"].clone();
 
         if request_object.is_null() {
             continue;
+        }
+
+        if is_status {
+            request_object["spec"] = serde_json::Value::Null;
+        } else {
+            request_object["status"] = serde_json::Value::Null;
         }
 
         let request_object: serde_yaml::Value = serde_json::from_value(request_object).unwrap();
@@ -125,11 +137,12 @@ fn main() {
         let sig =
             Signature::new(author_name, author_email, &git2::Time::new(author_date, 0)).unwrap();
         let msg = format!(
-            "Update {} {} in {} by {}",
+            "Update {} {} in {} by {}\n{}",
             x["objectRef"]["resource"],
             x["objectRef"]["name"],
             x["objectRef"]["namespace"],
-            x["user"]["username"]
+            x["user"]["username"],
+            line,
         );
         repo.commit(Some("HEAD"), &sig, &sig, &msg, &tree, &[&current_head])
             .unwrap();
