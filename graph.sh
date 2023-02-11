@@ -21,3 +21,9 @@ for i in {0..9}; do
         jq -s '.[0] + .[1]' "$timeline" timeline.json | sponge timeline.json
     fi
 done
+
+AVAILABILITY_DATA="$SCRIPT_DIR/../kube-api-availability/static/data.json"
+if [[ -f $AVAILABILITY_DATA ]]; then
+	# Merge the AVAILABILITY_DATA JSON array with our data.js JSON array
+	jq -s '.[0] + .[1]' "$AVAILABILITY_DATA" timeline.json | sponge timeline.json
+fi

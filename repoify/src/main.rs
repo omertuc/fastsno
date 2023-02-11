@@ -8,6 +8,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 
 use concat_reader::concat_path;
 use git2::Signature;
+use serde_json::Value;
 
 fn main() {
     let repo_dir = PathBuf::from("/tmp/audit-repo");
@@ -23,7 +24,6 @@ fn main() {
     let repo = git2::Repository::init(&repo_dir).unwrap();
     let mut repo_index = repo.index().unwrap();
 
-    // glob audit files
     let audit_files = glob::glob("../audit/*audit*")
         .unwrap()
         .into_iter()
@@ -57,61 +57,82 @@ fn main() {
         }
         bar.inc(line.len() as u64);
 
-        let x: serde_json::Value = serde_json::from_str(&line).unwrap();
-        if x["objectRef"]["name"].as_str().unwrap_or("").is_empty() {
+        let audit_event: serde_json::Value = serde_json::from_str(&line).unwrap();
+        if audit_event["objectRef"]["name"]
+            .as_str()
+            .unwrap_or("")
+            .is_empty()
+        {
             continue;
         }
 
-        if x["verb"].as_str().unwrap_or("") != "update" {
-            continue;
+        let verb = audit_event["verb"].as_str().unwrap();
+        match verb {
+            "update" | "create" => {}
+            _ => continue,
         }
 
         let target_dir = repo_dir
             .join(
-                x["objectRef"]["namespace"]
+                audit_event["objectRef"]["namespace"]
                     .as_str()
                     .unwrap_or("cluster-scoped-resources"),
             )
-            .join(x["objectRef"]["resource"].as_str().unwrap());
+            .join(audit_event["objectRef"]["resource"].as_str().unwrap());
 
         fs::create_dir_all(&target_dir).unwrap();
 
-        let name = x["objectRef"]["name"].as_str().unwrap();
-        let is_status = x["objectRef"]["subresource"].as_str().unwrap_or("") == "status";
+        let name = audit_event["objectRef"]["name"].as_str().unwrap();
+        let is_status = audit_event["objectRef"]["subresource"]
+            .as_str()
+            .unwrap_or("")
+            == "status";
 
-        let target_name = if is_status {
-            target_dir.join(format!("{}_status.yaml", name))
-        } else {
-            target_dir.join(format!("{}.yaml", name))
-        };
-
-        let mut request_object = x["requestObject"].clone();
-
+        let mut request_object = audit_event["requestObject"].clone();
         if request_object.is_null() {
-            continue;
+            // no requestObject means it was censored, create a fake one instead
+            request_object = Value::Object(serde_json::Map::new());
         }
 
-        if is_status {
-            request_object["spec"] = serde_json::Value::Null;
-        } else {
-            request_object["status"] = serde_json::Value::Null;
+        let status_target = target_dir.join(format!("{}_status.yaml", name));
+        let status_target_rel = status_target.strip_prefix("/tmp/audit-repo");
+        let regular_target = target_dir.join(format!("{}.yaml", name));
+        let regular_target_rel = regular_target.strip_prefix("/tmp/audit-repo");
+
+        if let "update" = verb {
+            if is_status {
+                request_object["spec"] = serde_json::Value::Null;
+            } else {
+                request_object["status"] = serde_json::Value::Null;
+            }
         }
 
         let request_object: serde_yaml::Value = serde_json::from_value(request_object).unwrap();
         let request_object = serde_yaml::to_string(&request_object).unwrap();
 
-        fs::write(&target_name, request_object).unwrap();
+        if let "update" = verb {
+            if is_status {
+                fs::write(&status_target, &request_object).unwrap();
+                repo_index.add_path(status_target_rel.unwrap()).unwrap();
+            } else {
+                fs::write(&regular_target, &request_object).unwrap();
+                repo_index.add_path(regular_target_rel.unwrap()).unwrap();
+            }
+        } else {
+            fs::write(&regular_target, &request_object).unwrap();
+            repo_index.add_path(regular_target_rel.unwrap()).unwrap();
 
-        let author_name = x["user"]["username"].as_str().unwrap();
+            fs::write(&status_target, &request_object).unwrap();
+            repo_index.add_path(status_target_rel.unwrap()).unwrap();
+        }
+
+        let author_name = audit_event["user"]["username"].as_str().unwrap();
         let author_email = "operator@redhat.com";
-        let author_date = x["requestReceivedTimestamp"].as_str().unwrap();
+        let author_date = audit_event["requestReceivedTimestamp"].as_str().unwrap();
         let author_date = chrono::DateTime::parse_from_rfc3339(author_date)
             .unwrap()
             .timestamp();
 
-        repo_index
-            .add_path(target_name.strip_prefix("/tmp/audit-repo").unwrap())
-            .unwrap();
         let tree = repo_index.write_tree();
         let tree = repo.find_tree(tree.unwrap()).unwrap();
 
@@ -137,12 +158,14 @@ fn main() {
         let sig =
             Signature::new(author_name, author_email, &git2::Time::new(author_date, 0)).unwrap();
         let msg = format!(
-            "Update {} {} in {} by {}\n{}",
-            x["objectRef"]["resource"],
-            x["objectRef"]["name"],
-            x["objectRef"]["namespace"],
-            x["user"]["username"],
-            line,
+            "{} {} {} in {} by {}",
+            // "{} {} {} in {} by {}\n\n{}",
+            verb.chars().next().unwrap().to_uppercase().to_string() + &verb[1..],
+            audit_event["objectRef"]["resource"],
+            audit_event["objectRef"]["name"],
+            audit_event["objectRef"]["namespace"],
+            audit_event["user"]["username"],
+            // serde_yaml::to_string(&audit_event).unwrap(),
         );
         repo.commit(Some("HEAD"), &sig, &sig, &msg, &tree, &[&current_head])
             .unwrap();
