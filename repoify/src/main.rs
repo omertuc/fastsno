@@ -119,6 +119,10 @@ fn main() {
                 repo_index.add_path(regular_target_rel.unwrap()).unwrap();
             }
         } else {
+            if fs::metadata(&regular_target).is_ok() || fs::metadata(&status_target).is_ok() {
+                continue;
+            }
+
             fs::write(&regular_target, &request_object).unwrap();
             repo_index.add_path(regular_target_rel.unwrap()).unwrap();
 
