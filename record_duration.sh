@@ -11,9 +11,9 @@ filename="duration.txt"
 
 
 start=$(date +%s)
-until [ "$(oc get clusterversion -o jsonpath='{.items[*].status.conditions[?(@.type=="Available")].status}')" == "True" ]
+until [ "$(oc get clusterversion -o jsonpath='{.items[*].status.conditions[?(@.type=="Available")].status}')" == "True" &> /dev/null ]
 do
-  sleep 20
+  sleep 5
 done
 
 end=$(date +%s)
