@@ -33,7 +33,13 @@ def remove_repetition_by(key):
 
 # Collect all resource names
 [
-    .[] | select(.objectRef.resource == "clusteroperators" and (.verb == "update" or .verb == "create") and (.requestObject.status.conditions != null))
+    .[] | select(
+        (
+            .objectRef.resource == "clusteroperators"
+            or .objectRef.resource == "clusterversions"
+        )
+        and (.verb == "update" or .verb == "create")
+        and (.requestObject.status.conditions != null))
 ] as $all_events 
 | [$all_events[].requestObject.metadata.name]
 | unique
