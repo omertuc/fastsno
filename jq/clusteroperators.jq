@@ -39,7 +39,8 @@ def remove_repetition_by(key):
             or .objectRef.resource == "clusterversions"
         )
         and (.verb == "update" or .verb == "create")
-        and (.requestObject.status.conditions != null))
+        and (.requestObject.status.conditions != null)
+    )
 ] as $all_events 
 | [$all_events[].requestObject.metadata.name]
 | unique
