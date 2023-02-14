@@ -5,7 +5,7 @@ A collection of scripts tools to analyze / improve SNO installation time, as a p
 # Prerequisites
 
 * Only applicable for the bootstrap-in-place SNO installation
-* Before running most scripts here, set your KUBECONFIG correctly
+* Before running most scripts here, set your `KUBECONFIG` correctly
 * Set `SSH_IDENTITIY_FILE` to the path of your private key first (defaults to `../bootstrap-in-place-poc/ssh-key/key`)
 * To get audit logs during bootstrap, run `./enable_bootstrap_audit.sh` very early during the bootstrapping process
 
