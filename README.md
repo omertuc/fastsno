@@ -49,8 +49,10 @@ exactly.
 It also allows you to `git checkout` to see the state of the cluster at a
 particular point in time.
 
-[ ] TODO: Resources created too early don't show up because they're not in the audit
+- [ ] TODO: Resources created too early don't show up because they're not in the audit
 logs, merge audit logs with must-gather logs to have the full picture
+
+- [ ] TODO: Handle resource deletion
 
 # Record Duration 
 
