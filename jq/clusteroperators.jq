@@ -1,5 +1,6 @@
 def is_interesting_condition:
     .type == "Available" or
+    .type == "Progressing" or
     .type == "Degraded";
 
 def summarize_condition:
@@ -11,6 +12,10 @@ def summarize_condition:
         "Degraded"
     elif .type == "Degraded" and .status == "False" then
         "Undegraded"
+    elif .type == "Progressing" and .status == "True" then
+        "Progressing"
+    elif .type == "Progressing" and .status == "False" then
+        "DoneProgressing"
     else
         "\(.type)\(.status)"
     end;
